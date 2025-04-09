@@ -1,0 +1,13 @@
+.header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background-color: #003087; /* Amity blue */
+    border-bottom: 2px solid #ddd;
+}
+
+.header-logo {
+    height: 80px; /* Adjust size for better visibility */
+    object-fit: contain;
+}

@@ -1,0 +1,46 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrolling on the entire page */
+    width: 100vw; /* Use viewport width to avoid horizontal overflow */
+    height: 100vh; /* Use viewport height to avoid vertical overflow */
+    box-sizing: border-box; /* Include padding and border in dimensions */
+}
+
+.login-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure the page takes up the full viewport height */
+    position: relative; /* Ensure the footer is positioned relative to the page */
+    overflow: hidden; /* Prevent scrolling on the login page */
+    width: 100vw; /* Use viewport width to avoid horizontal overflow */
+    height: 100vh; /* Use viewport height to avoid vertical overflow */
+    box-sizing: border-box; /* Include padding and border in element's dimensions */
+}
+
+.login-container {
+    flex: 1; /* Allow the login container to grow and push the footer to the bottom */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center the login form vertically */
+    align-items: center; /* Center the login form horizontally */
+    padding: 20px;
+    z-index: 1; /* Ensure the login container does not overlap the footer */
+    max-width: 100%; /* Prevent horizontal overflow */
+    box-sizing: border-box; /* Include padding and border in element's dimensions */
+    overflow: hidden; /* Prevent any internal scrolling */
+}
+
+.footer {
+    position: sticky; /* Ensure the footer sticks to the bottom */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000; /* Ensure the footer is above other elements */
+    background-color: #003087; /* Amity blue */
+    color: #fff;
+    text-align: center;
+    padding: 10px 20px;
+    font-size: 14px;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1); /* Add a shadow for better visibility */
+}

@@ -1,0 +1,38 @@
+.footer {
+    position: sticky; /* Make the footer stick to the bottom when scrolling */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 20px;
+    background-color: #003087; /* Amity blue */
+    color: #fff;
+    font-size: 14px;
+    z-index: 1000; /* Ensure the footer is above other elements */
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1); /* Add a shadow for better visibility */
+    display: flex;
+    justify-content: space-between; /* Space out left and right sections */
+    align-items: center;
+}
+
+.footer-left {
+    text-align: left;
+    flex: 1; /* Allow the left section to take up available space */
+}
+
+.footer-right {
+    text-align: right;
+    flex: 1; /* Allow the right section to take up available space */
+}
+
+@media (max-width: 768px) {
+    .footer {
+        flex-direction: column; /* Stack items vertically on smaller screens */
+        text-align: center;
+    }
+
+    .footer-left,
+    .footer-right {
+        text-align: center;
+        margin: 5px 0;
+    }
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "_id": {
+      "$oid": "67e0f475c8258e3f044c53f3"
+    },
+    "feedbackType": "Pre-Feedback",
+    "questions": [
+      "The faculty clearly outlines & explains the Course Objective, Session Plan & Evaluation Scheme on the first day of the class.",
+      "The course design is comprehensive, relevant & well structured.",
+      "Session Plan is evenly covering the whole syllabus.",
+      "The faculty gives an updated list of study reference i.e. textbooks / journals / magazines etc.",
+      "Lectures / Labs / Tutorials are conducted as per the schedule / session plan.",
+      "The faculty comes well prepared in the class.",
+      "The faculty way of teaching is clear & understandable to the students.",
+      "The faculty uses innovative ways of teaching e.g., Power Point Presentation, Class Discussions, Slide Presentations etc.",
+      "The course actually covered matches with the session plan given initially.",
+      "The faculty allows students to express their ideas freely.",
+      "The faculty is available for academic help outside the classroom & effectively stimulates interest in the subject matter.",
+      "The faculty gives adequate & relevant examples from the real world.",
+      "Faculty helps in improving the understanding & application of the subject matter.",
+      "The Assignments / Projects given are relevant & useful.",
+      "Classroom activity stimulates searching for further material from different sources.",
+      "Labs possess all the necessary software / testing materials / equipments.",
+      "Field / Lab sessions are sufficient to cover the syllabus.",
+      "The faculty provides outline of the continuous internal evaluation scheme in the first week of semester.",
+      "The requirement of assignment / test and the means by which the students work is judged is clearly outlined for students both orally and in writing.",
+      "The students are informed in a timely manner about their internal marks.",
+      "Faculty provides feedback on the students’ performance in a timely manner.",
+      "The faculty is well presentable & interactive.",
+      "The faculty is fair, transparent, objective & just.",
+      "The faculty effectively communicates and is audible.",
+      "Faculty is aware and responsive to students’ learning difficulties.",
+      "Would you like to do another course with this faculty or recommend this faculty to other students for doing the course?"
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "67e0f55dc8258e3f044c53f4"
+    },
+    "feedbackType": "Post-Feedback",
+    "questions": [
+      "The faculty clearly outlines & explains the Course Objective, Session Plan & Evaluation Scheme on the first day of the class.",
+      "The course design is comprehensive, relevant & well structured.",
+      "Session Plan is evenly covering the whole syllabus.",
+      "The faculty gives an updated list of study reference i.e. textbooks / journals / magazines etc.",
+      "Lectures / labs / tutorials are conducted as per the schedule / session plan.",
+      "The faculty comes well prepared in the class.",
+      "The faculty way of teaching is clear & understandable to the students.",
+      "The faculty uses innovative ways of teaching e.g., Power Point Presentation, Class Discussions, Slide Presentations etc.",
+      "The course actually covered matches with the session plan given initially.",
+      "The faculty allows students to express their ideas freely.",
+      "The faculty is available for academic help outside the classroom & effectively stimulates interest in the subject matter.",
+      "The faculty gives adequate & relevant examples from the real world.",
+      "Faculty helps in improving the understanding & application of the subject matter.",
+      "The Assignments / Projects given are relevant & useful.",
+      "Classroom activity stimulates searching for further material from different sources.",
+      "The faculty provides outline of the continuous internal evaluation scheme in the first week of semester.",
+      "The faculty is well presentable & interactive.",
+      "The faculty is fair, transparent, objective & just.",
+      "The faculty effectively communicates and is audible.",
+      "Faculty is aware and responsive to students’ learning difficulties.",
+      "Has the faculty uploaded the session plan on the first day of the class?",
+      "Have the classes of the course commenced at the beginning of the semester?",
+      "Labs possess all the necessary software/testing materials/equipments."
+    ]
+  }
+]

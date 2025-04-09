@@ -1,0 +1,121 @@
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full height of the viewport */
+    width: 100vw; /* Full width of the viewport */
+    background: linear-gradient(135deg, #003087 0%, #f0f2f5 100%);
+    overflow: hidden; /* Prevent scrolling */
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    width: 350px;
+    height: 110px;
+    background: url("/src/assets/amity-logo.png") no-repeat;
+    background-size: contain;
+}
+
+/* Fallback if logo fails to load */
+.login-container::after {
+    content: 'Amity University';
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    font-size: 24px;
+    color: #003087;
+    display: none;
+}
+
+.login-container::before:empty + ::after {
+    display: block;
+}
+
+.login-form {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    border: none;
+    border-radius: 12px;
+    background-color: #ffffff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login-title {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #003087;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.login-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.login-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #003087;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.login-button:hover {
+    background-color: #ffb300;
+}
+
+.login-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.success-message {
+    color: #28a745;
+    font-size: 12px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .login-container::before {
+        width: 220px;
+        height: 70px;
+        top: 20px;
+        left: 20px;
+    }
+
+    .login-form {
+        max-width: 90%;
+        padding: 25px;
+    }
+
+    .login-title {
+        font-size: 22px;
+    }
+
+    .login-input,
+    .login-button {
+        font-size: 13px;
+    }
+}
