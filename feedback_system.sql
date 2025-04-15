@@ -229,6 +229,27 @@ INSERT INTO `students` VALUES ('A86605223001','NEHA T V',1,'B.Tech CSE','A866052
 UNLOCK TABLES;
 
 --
+-- Table structure for table `student_semesters`
+--
+
+DROP TABLE IF EXISTS `student_semesters`;
+CREATE TABLE student_semesters (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(50) NOT NULL,
+    semester INT NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES students(studentId) ON DELETE CASCADE,
+    CONSTRAINT chk_semester_range CHECK (semester BETWEEN 1 AND 8)
+);
+
+-- Insert initial data for existing students
+INSERT INTO student_semesters (student_id, semester)
+SELECT studentId, semester FROM students;
+
+-- Add additional semester mappings for students
+INSERT INTO student_semesters (student_id, semester)
+SELECT studentId, 2 FROM students WHERE semester = 1;
+
+--
 -- Table structure for table `users`
 --
 

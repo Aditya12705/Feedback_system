@@ -4,33 +4,16 @@ const router = express.Router();
 
 router.get('/:studentId', async (req, res) => {
     const { studentId } = req.params;
-    console.log('Received request for student report:', studentId);
+    const { semester } = req.query; // Get semester from query params
 
     try {
-        // Debug database state first
-        await debugDatabaseState(studentId);
-        
-        const reportData = await getStudentReportData(studentId);
-        
-        // Add debugging information to response in development
-        const debugInfo = process.env.NODE_ENV === 'development' ? {
-            debug: {
-                timestamp: new Date().toISOString(),
-                studentId,
-                feedbackCount: reportData.feedback ? reportData.feedback.length : 0
-            }
-        } : {};
-
-        res.json({
-            ...reportData,
-            ...debugInfo
-        });
+        const reportData = await getStudentReportData(studentId, semester); // Pass semester to service
+        res.json(reportData);
     } catch (error) {
         console.error('Error generating student report:', error);
         res.status(500).json({ 
             message: 'Error generating report',
             error: error.message,
-            studentId
         });
     }
 });

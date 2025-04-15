@@ -47,110 +47,91 @@ const FeedbackForm = () => {
         fetchStudentInfo();
     }, [navigate, studentInfo?.studentId]);
 
-    useEffect(() => {
-        if (!feedbackType) return; // Fetch questions only after feedbackType is selected
-
-        const fetchQuestions = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    setError('Authentication token is missing. Redirecting to login...');
-                    setTimeout(() => navigate('/'), 2000);
-                    return;
-                }
-
-                const response = await axios.get(
-                    `http://localhost:5000/api/feedback/questions/${feedbackType}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                console.log(`Questions for ${feedbackType} fetched successfully:`, response.data);
-                setQuestions(response.data);
-            } catch (err) {
-                console.error('Error fetching questions:', err);
-                setError('Failed to load questions. Please try again.');
-            }
-        };
-
-        fetchQuestions();
-    }, [feedbackType, navigate]);
-
-    useEffect(() => {
-        const fetchFaculties = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:5000/api/feedback/faculties', {
+    const fetchFaculties = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token || !semester) return;
+            const response = await axios.get(
+                `http://localhost:5000/api/feedback/faculties`, 
+                { 
                     headers: { Authorization: `Bearer ${token}` },
-                });
-
-                console.log('Raw faculty data:', response.data);
-
-                if (response.data.length === 0) {
-                    setError('No faculties found for your course and semester.');
-                    return;
+                    params: { semester } // Pass selected semester
                 }
+            );
 
-                // Transform faculty data to ensure correct ID handling
-                const transformedFaculties = response.data.map(faculty => ({
-                    ...faculty,
-                    id: parseInt(faculty.id || faculty._id, 10),
-                }));
-                console.log('Transformed faculties:', transformedFaculties);
-                setFaculties(transformedFaculties);
-
-                // Initialize feedback state with correct IDs
-                const initialFeedback = {};
-                transformedFaculties.forEach((faculty) => {
-                    initialFeedback[faculty.id] = {
-                        scores: Array(26).fill(0),
-                        comment: '',
-                        selectedFaculty: faculty.isElective ? '' : null, // Handle electives
-                    };
-                });
-                console.log('Initial feedback state:', initialFeedback);
-                setFeedback(initialFeedback);
-            } catch (err) {
-                console.error('Error fetching faculties:', err);
-                setError('Failed to load faculties. Please try again.');
+            if (response.data.length === 0) {
+                setError('No faculties found for selected semester');
+                return;
             }
-        };
 
-        fetchFaculties();
-    }, [feedbackType]);
+            console.log('Fetched faculties:', response.data);
+            setFaculties(response.data);
+            
+            // Initialize feedback state
+            const initialFeedback = {};
+            response.data.forEach(faculty => {
+                initialFeedback[faculty.id] = {
+                    scores: Array(26).fill(''),
+                    comment: '',
+                    selectedFaculty: faculty.isElective ? '' : null
+                };
+            });
+            setFeedback(initialFeedback);
+        } catch (err) {
+            console.error('Error fetching faculties:', err);
+            setError(err.response?.data?.message || 'Failed to load faculties');
+            setFaculties([]);
+        }
+    }, [semester]);
+
+    const fetchQuestions = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!feedbackType || !semester) return; // Fetch questions only after feedbackType and semester are selected
+            const response = await axios.get(
+                `http://localhost:5000/api/feedback/questions/${feedbackType}?semester=${semester}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setQuestions(response.data);
+        } catch (err) {
+            console.error('Error fetching questions:', err);
+            setError('Failed to load questions');
+        }
+    }, [feedbackType, semester]);
+
+    useEffect(() => {
+        if (semester && feedbackType) {
+            setFaculties([]);
+            setQuestions([]);
+            fetchFaculties();
+            fetchQuestions();
+        }
+    }, [semester, feedbackType, fetchFaculties, fetchQuestions]);
 
     const checkFeedbackStatus = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             const studentId = studentInfo?.studentId;
-            if (!token || !studentId) return;
+            if (!token || !studentId || !semester) return;
 
-            // Clear any cached status
-            localStorage.removeItem('feedbackSubmitted');
-            localStorage.removeItem(`feedbackSubmitted_${studentId}`);
-
+            // Check status for both semesters
             const response = await axios.get(
-                `http://localhost:5000/api/feedback/status/${studentId}`,
+                `http://localhost:5000/api/feedback/status/${studentId}?semester=${semester}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             
             setFeedbackStatus(response.data);
-            
-            // Update local storage based on actual status
-            if (response.data.postFeedback) {
-                localStorage.setItem(`feedbackSubmitted_${studentId}`, 'true');
-            } else {
-                localStorage.removeItem(`feedbackSubmitted_${studentId}`);
-            }
         } catch (error) {
             console.error('Error checking feedback status:', error);
             setFeedbackStatus({ preFeedback: false, postFeedback: false });
         }
-    }, [studentInfo]);
+    }, [studentInfo, semester]); // Add semester as dependency
 
     useEffect(() => {
-        if (studentInfo?.studentId) {
+        if (studentInfo?.studentId && semester) {
             checkFeedbackStatus();
         }
-    }, [studentInfo, checkFeedbackStatus]);
+    }, [studentInfo, semester, checkFeedbackStatus]);
 
     const handleFeedbackTypeChange = async (type) => {
         if (!academicYear || !semester) {
@@ -198,6 +179,14 @@ const FeedbackForm = () => {
         setFaculties([]);
     };
 
+    const handleSemesterChange = (e) => {
+        const newSemester = e.target.value;
+        setSemester(newSemester);
+        // Reset feedback type when semester changes
+        setFeedbackType(null);
+        setError('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -206,14 +195,16 @@ const FeedbackForm = () => {
                 facultyId: parseInt(facultyId),
                 scores: data.scores.map(s => parseInt(s) || 0),
                 selectedFaculty: data.selectedFaculty || '',
-                comment: data.comment || ''
+                comment: data.comment || '',
+                semester: parseInt(semester) // Add semester to payload
             }));
 
             const response = await axios.post(
                 'http://localhost:5000/api/feedback/submit',
                 {
                     feedback: feedbackData,
-                    feedbackType
+                    feedbackType,
+                    semester: parseInt(semester) // Add semester to the payload
                 },
                 {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -249,6 +240,7 @@ const FeedbackForm = () => {
                                     className="elective-dropdown"
                                     onChange={(e) => handleElectiveChange(faculty.id, e.target.value)}
                                     value={feedback[faculty.id]?.selectedFaculty || ''}
+                                    required={faculty.isElective}
                                 >
                                     <option value="">Select Faculty</option>
                                     {faculty.facultyName.split('/').map((name, index) => (
@@ -372,7 +364,7 @@ const FeedbackForm = () => {
                         Select Semester:
                         <select
                             value={semester}
-                            onChange={(e) => setSemester(e.target.value)}
+                            onChange={handleSemesterChange}
                             className="styled-dropdown"
                             required
                         >

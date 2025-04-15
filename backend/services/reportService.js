@@ -34,7 +34,6 @@ async function getStudentReportData(studentId) {
                 f.name as faculty_name,
                 f.subjectName,
                 q.text as question,
-                f.id as facultyId,
                 f.isElective
             FROM 
                 scores s
@@ -43,46 +42,42 @@ async function getStudentReportData(studentId) {
             WHERE 
                 s.student_id = ?
             ORDER BY 
-                s.feedbackType ASC,
                 f.id ASC,
+                s.feedbackType ASC,
                 s.question_id ASC`,
             [studentId]
         );
 
-        // Process feedback data
-        const processedFeedback = {};
-        
-        feedbackData.forEach(item => {
-            // Use selected_faculty for electives, otherwise use faculty_name
-            const facultyName = item.isElective ? item.selected_faculty : item.faculty_name;
-            const facultyKey = `${facultyName} - ${item.subjectName}`;
-            
-            if (!processedFeedback[facultyKey]) {
-                processedFeedback[facultyKey] = [];
+        // Process feedback data by faculty
+        const processedFeedback = feedbackData.reduce((acc, item) => {
+            const facultyKey = item.isElective ? 
+                `${item.selected_faculty} - ${item.subjectName}` :
+                `${item.faculty_name} - ${item.subjectName}`;
+
+            if (!acc[facultyKey]) {
+                acc[facultyKey] = {
+                    facultyDetails: facultyKey,
+                    feedbackItems: []
+                };
             }
 
-            processedFeedback[facultyKey].push({
+            acc[facultyKey].feedbackItems.push({
                 question: item.question,
-                score: parseInt(item.score),
-                comment: item.comment || '',
-                feedbackType: item.feedbackType,
-                questionId: item.questionId
+                score: item.score,
+                comment: item.comment,
+                questionId: item.questionId,
+                feedbackType: item.feedbackType
             });
-        });
 
-        // Debug logging
-        console.log('Raw feedback data:', feedbackData);
-        console.log('Processed feedback:', processedFeedback);
+            return acc;
+        }, {});
 
         return {
             studentName: student.name,
             usn: student.studentId,
             course: student.course,
             semester: student.semester,
-            feedback: Object.entries(processedFeedback).map(([key, items]) => ({
-                facultyDetails: key,
-                feedbackItems: items.sort((a, b) => a.questionId - b.questionId)
-            }))
+            feedback: Object.values(processedFeedback)
         };
 
     } catch (error) {

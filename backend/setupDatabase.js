@@ -118,16 +118,39 @@ async function setupDatabase() {
                     console.warn(`Skipping invalid faculty data:`, faculty);
                     continue;
                 }
+
+                // Ensure semester is in correct format
+                let formattedSemester = faculty.semester;
+                if (typeof faculty.semester === 'number') {
+                    const semMap = {
+                        1: '1st Semester',
+                        2: '2nd Semester',
+                        3: '3rd Semester',
+                        4: '4th Semester'
+                    };
+                    formattedSemester = semMap[faculty.semester] || `${faculty.semester}th Semester`;
+                }
+                
+                console.log(`Processing faculty: ${faculty.name}, Semester: ${formattedSemester}`);
                 
                 await connection.query(
                     `INSERT INTO faculties (name, courseName, subjectName, semester, professorName, 
                         subjectCode, academicYear, subject, isElective)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE
+                     name = VALUES(name),
+                     courseName = VALUES(courseName),
+                     subjectName = VALUES(subjectName),
+                     professorName = VALUES(professorName),
+                     subjectCode = VALUES(subjectCode),
+                     academicYear = VALUES(academicYear),
+                     subject = VALUES(subject),
+                     isElective = VALUES(isElective)`,
                     [
                         faculty.name,
                         faculty.courseName.toLowerCase(),
                         faculty.subjectName,
-                        faculty.semester,
+                        formattedSemester,
                         faculty.professorName || faculty.name,
                         faculty.subjectCode || null,
                         faculty.academicYear || '2023-24',

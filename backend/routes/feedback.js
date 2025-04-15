@@ -62,44 +62,38 @@ function calculatePercentile(score, maxScore = 5) {
     return ((score / maxScore) * 100).toFixed(2);
 }
 
-// Fetch faculties for a student
+// Fetch faculties for a student (with semester param)
 router.get('/faculties', authenticateStudent, async (req, res) => {
     try {
         const student = await User.findById(req.user.id);
         if (!student || student.role !== 'student') {
             return res.status(403).json({ message: 'Access denied.' });
         }
-
-        // Get all matching faculties (both elective and non-elective)
+        // Use semester from query param if provided, else student's current semester
+        const semester = req.query.semester ? parseInt(req.query.semester) : student.semester;
         const [results] = await db.query(
             `SELECT f.* 
              FROM faculties f 
              WHERE f.courseName = ? AND f.semester = ?`,
-            [student.course.toLowerCase(), student.semester]
+            [student.course.toLowerCase(), semester]
         );
 
-        console.log('Database query results:', results);
-
         if (!results || results.length === 0) {
-            return res.status(404).json({ message: 'No faculties found for your course and semester.' });
+            return res.status(404).json({ message: 'No faculties found for the specified semester.' });
         }
 
-        // Transform results into the expected format
-        const faculties = results.map(faculty => ({
+        const formattedFaculties = results.map(faculty => ({
             id: faculty.id,
             facultyName: faculty.name.trim(),
-            subjectName: faculty.subjectName || faculty.subject || 'N/A',
+            subjectName: faculty.subjectName || faculty.subject,
             isElective: Boolean(faculty.isElective),
+            semester: semester
         }));
 
-        console.log('Transformed faculties:', faculties);
-        res.json(faculties);
+        res.json(formattedFaculties);
     } catch (err) {
-        console.error('Error fetching faculties:', err);
-        res.status(500).json({ 
-            message: 'Failed to load faculties',
-            error: err.message,
-        });
+        console.error('Faculty fetch error:', err);
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -281,22 +275,24 @@ router.get('/debug/faculty/:id', authenticateStudent, async (req, res) => {
     }
 });
 
-// Add new endpoint to check feedback status
+// Add new endpoint to check feedback status (per semester)
 router.get('/status/:studentId', authenticateStudent, async (req, res) => {
     try {
-        const [results] = await db.query(
-            `SELECT DISTINCT feedbackType, COUNT(*) as count 
-             FROM scores 
-             WHERE student_id = ? 
-             GROUP BY feedbackType`,
-            [req.params.studentId]
-        );
-        
+        const semester = req.query.semester ? parseInt(req.query.semester) : null;
+        let query = `SELECT DISTINCT feedbackType, COUNT(*) as count 
+                     FROM scores 
+                     WHERE student_id = ?`;
+        const params = [req.params.studentId];
+        if (semester) {
+            query += ' AND semester = ?';
+            params.push(semester);
+        }
+        query += ' GROUP BY feedbackType';
+        const [results] = await db.query(query, params);
         const status = {
             preFeedback: Boolean(results.find(r => r.feedbackType === 'Pre-Feedback' && r.count > 0)),
             postFeedback: Boolean(results.find(r => r.feedbackType === 'Post-Feedback' && r.count > 0))
         };
-        
         res.json(status);
     } catch (error) {
         console.error('Error checking feedback status:', error);
@@ -304,52 +300,38 @@ router.get('/status/:studentId', authenticateStudent, async (req, res) => {
     }
 });
 
-// Submit feedback
+// Submit feedback (store semester from payload)
 router.post('/submit', authenticateStudent, async (req, res) => {
     try {
-        const { feedback, feedbackType } = req.body;
+        const { feedback, feedbackType, semester } = req.body;
         const studentId = req.user.studentId;
 
-        // Get student's semester first
-        const [[student]] = await db.query(
-            'SELECT semester FROM students WHERE student_id = ?',
-            [studentId]
-        );
-
-        if (!student) {
+        // Validate semester
+        if (!semester) {
             return res.status(400).json({
                 success: false,
-                message: 'Student not found'
+                message: 'Semester is required'
             });
         }
 
-        // Check if pre-feedback is submitted before allowing post-feedback
-        if (feedbackType === 'Post-Feedback') {
-            const [[preFeedbackCheck]] = await db.query(
-                `SELECT COUNT(*) as count FROM scores 
-                 WHERE student_id = ? AND feedbackType = 'Pre-Feedback'`,
-                [studentId]
-            );
-            
-            if (preFeedbackCheck.count === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Pre-Feedback must be submitted before Post-Feedback'
-                });
-            }
-        }
+        console.log('Submitting feedback:', {
+            studentId,
+            feedbackType,
+            semester,
+            feedbackCount: feedback.length
+        });
 
-        // Check for duplicate submission
+        // Check for duplicate submission for this semester
         const [[existing]] = await db.query(
             `SELECT COUNT(*) as count FROM scores 
-             WHERE student_id = ? AND feedbackType = ?`,
-            [studentId, feedbackType]
+             WHERE student_id = ? AND feedbackType = ? AND semester = ?`,
+            [studentId, feedbackType, semester]
         );
 
         if (existing.count > 0) {
             return res.status(400).json({
                 success: false,
-                message: `${feedbackType} has already been submitted`
+                message: `${feedbackType} has already been submitted for Semester ${semester}`
             });
         }
 
@@ -366,7 +348,7 @@ router.post('/submit', authenticateStudent, async (req, res) => {
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         studentId, facultyId, questionId, scores[i], 
-                        selectedFaculty, comment || '', feedbackType, student.semester
+                        selectedFaculty, comment || '', feedbackType, semester
                     ]
                 );
             }
@@ -374,14 +356,15 @@ router.post('/submit', authenticateStudent, async (req, res) => {
 
         res.json({ 
             success: true, 
-            message: `${feedbackType} submitted successfully` 
+            message: `${feedbackType} submitted successfully for Semester ${semester}` 
         });
 
     } catch (error) {
         console.error('Feedback submission error:', error);
         res.status(500).json({ 
             success: false, 
-            message: error.message 
+            message: 'Failed to submit feedback',
+            error: error.message 
         });
     }
 });
@@ -389,23 +372,83 @@ router.post('/submit', authenticateStudent, async (req, res) => {
 // Get feedback data for admin view
 router.get('/admin/feedback', authenticateAdmin, async (req, res) => {
     try {
-        const [results] = await db.query(
-            `SELECT s.student_id, st.name as student_name, s.faculty_id, 
-                    f.name as faculty_name, f.subjectName, s.feedbackType,
-                    s.score, s.question_id, q.text as question_text,
-                    s.comment, s.semester, f.courseName
-             FROM scores s
-             JOIN students st ON s.student_id = st.student_id
-             JOIN faculties f ON s.faculty_id = f.id
-             JOIN questions q ON s.question_id = q.id
-             ORDER BY s.student_id, s.faculty_id, s.question_id`
-        );
+        const { semester, course } = req.query;
+        console.log('Admin feedback request:', { semester, course });
+
+        // Get all feedback data with exact semester matching
+        const query = `
+            SELECT DISTINCT
+                s.student_id, 
+                st.name as student_name, 
+                s.faculty_id,
+                s.semester as feedback_semester,
+                s.feedbackType,
+                s.score,
+                s.question_id,
+                s.selected_faculty,
+                s.comment,
+                f.name as faculty_name,
+                f.subjectName,
+                f.courseName,
+                q.text as question_text
+            FROM scores s
+            JOIN students st ON s.student_id = st.student_id
+            JOIN faculties f ON s.faculty_id = f.id
+            JOIN questions q ON s.question_id = q.id
+            WHERE st.course = ? 
+            AND s.semester = ?
+            ORDER BY s.student_id, s.feedbackType, f.id, s.question_id`;
+
+        const [results] = await db.query(query, [course.toLowerCase(), parseInt(semester)]);
+        
+        console.log(`Found ${results.length} records for semester ${semester}`);
+
+        const formattedData = results.reduce((acc, row) => {
+            const key = row.student_id;
+            if (!acc[key]) {
+                acc[key] = {
+                    studentId: row.student_id,
+                    studentName: row.student_name,
+                    semester: parseInt(row.feedback_semester), // Convert to number
+                    course: row.courseName,
+                    feedbacks: []
+                };
+            }
+
+            // Find or create feedback entry
+            let feedback = acc[key].feedbacks.find(f => 
+                f.facultyId === row.faculty_id && 
+                f.feedbackType === row.feedbackType
+            );
+
+            if (!feedback) {
+                feedback = {
+                    facultyId: row.faculty_id,
+                    facultyName: row.selected_faculty || row.faculty_name,
+                    subjectName: row.subjectName,
+                    feedbackType: row.feedbackType,
+                    scores: [],
+                    comment: row.comment
+                };
+                acc[key].feedbacks.push(feedback);
+            }
+
+            feedback.scores.push({
+                questionId: row.question_id,
+                questionText: row.question_text,
+                score: row.score
+            });
+
+            return acc;
+        }, {});
 
         res.json({
             success: true,
-            data: results
+            data: Object.values(formattedData)
         });
+
     } catch (error) {
+        console.error('Admin feedback fetch error:', error);
         res.status(500).json({
             success: false,
             message: error.message
@@ -416,25 +459,51 @@ router.get('/admin/feedback', authenticateAdmin, async (req, res) => {
 // Fetch questions for feedback type
 router.get('/questions/:feedbackType', authenticateStudent, async (req, res) => {
     try {
-        const feedbackType = req.params.feedbackType.toLowerCase();
+        const feedbackType = req.params.feedbackType;
+        const selectedSemester = parseInt(req.query.semester) || 1;
+        const studentId = req.user.studentId;
 
-        const questionsFilePath = path.join(__dirname, '../feedbackSystem.questions.json');
-        if (!fs.existsSync(questionsFilePath)) {
-            return res.status(500).json({ message: 'Questions file not found.' });
-        }
-
-        const questionsData = JSON.parse(fs.readFileSync(questionsFilePath, 'utf-8'));
-        const feedbackQuestions = questionsData.find(
-            (item) => item.feedbackType.toLowerCase() === feedbackType
+        const [[studentInfo]] = await db.query(
+            'SELECT * FROM students WHERE student_id = ?',
+            [studentId]
         );
 
-        if (!feedbackQuestions) {
-            return res.status(404).json({ message: `No questions found for ${feedbackType}.` });
+        console.log('Loading questions for:', {
+            feedbackType,
+            semester: selectedSemester,
+            course: studentInfo.course
+        });
+
+        // Get questions for the specific semester and feedback type
+        const [questions] = await db.query(
+            `SELECT DISTINCT q.* 
+             FROM questions q 
+             WHERE q.feedbackType = ?
+             ORDER BY q.id ASC`,
+            [feedbackType]
+        );
+
+        // If no questions found, load from JSON
+        if (!questions || questions.length === 0) {
+            const questionsPath = path.join(__dirname, '../feedbackSystem.questions.json');
+            const questionsData = JSON.parse(fs.readFileSync(questionsPath, 'utf-8'));
+            const feedbackSection = questionsData.find(
+                section => section.feedbackType === feedbackType
+            );
+
+            if (!feedbackSection) {
+                return res.status(404).json({ message: 'No questions found' });
+            }
+
+            return res.json(feedbackSection.questions);
         }
 
-        res.json(feedbackQuestions.questions);
+        const questionTexts = questions.map(q => q.text);
+        res.json(questionTexts);
+
     } catch (err) {
-        res.status(500).json({ message: 'Failed to load questions. Please try again.' });
+        console.error('Questions fetch error:', err);
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -623,22 +692,67 @@ router.get('/faculty/:facultyId/excel', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Modify existing feedback query to include AIML students
+// Update the student report query
 router.get('/student/:studentId', authenticateAdmin, async (req, res) => {
     try {
+        const semester = req.query.semester ? parseInt(req.query.semester) : null;
+        const params = [req.params.studentId];
+        let semesterFilter = '';
+        if (semester) {
+            semesterFilter = ' AND s.semester = ?';
+            params.push(semester);
+        }
         const [results] = await db.query(
-            `SELECT s.*, q.text as question_text, f.name as faculty_name, 
-                    f.subjectName, st.course, st.semester
+            `SELECT s.*, 
+                    q.text as question_text, 
+                    f.name as faculty_name,
+                    f.subjectName, 
+                    st.course, 
+                    st.name as student_name,
+                    st.studentId as usn,
+                    s.semester
              FROM scores s
              JOIN students st ON s.student_id = st.student_id
              JOIN questions q ON s.question_id = q.id
              JOIN faculties f ON s.faculty_id = f.id
-             WHERE s.student_id = ?
-             ORDER BY s.feedbackType, f.id, q.id`,
-            [req.params.studentId]
+             WHERE s.student_id = ?${semesterFilter}
+             ORDER BY s.semester, s.feedbackType, f.id, q.id`,
+            params
         );
-        
-        res.json(results);
+
+        if (!results || results.length === 0) {
+            return res.json({ feedback: [] });
+        }
+
+        // Group and structure the data for the frontend
+        const studentInfo = {
+            name: results[0].student_name,
+            usn: results[0].usn,
+            course: results[0].course,
+            semester: results[0].semester
+        };
+
+        // Group feedback by faculty and feedback type
+        const feedbackMap = {};
+        results.forEach(row => {
+            const facultyKey = `${row.selected_faculty || row.faculty_name} - ${row.subjectName}`;
+            if (!feedbackMap[facultyKey]) feedbackMap[facultyKey] = [];
+            feedbackMap[facultyKey].push({
+                question: row.question_text,
+                score: row.score,
+                comment: row.comment,
+                feedbackType: row.feedbackType,
+                questionId: row.question_id
+            });
+        });
+
+        res.json({
+            ...studentInfo,
+            feedback: Object.entries(feedbackMap).map(([facultyDetails, feedbackItems]) => ({
+                facultyDetails,
+                feedbackItems: feedbackItems.sort((a, b) => a.questionId - b.questionId)
+            }))
+        });
     } catch (error) {
         console.error('Error fetching student feedback:', error);
         res.status(500).json({ message: 'Failed to fetch student feedback' });

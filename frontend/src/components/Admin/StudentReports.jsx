@@ -4,7 +4,6 @@ import '../../styles/SharedStyles.css';
 
 const StudentReports = () => {
     const [students, setStudents] = useState([]);
-    // Removed unused 'course' state
     const [semesters] = useState([1, 2]); // Only 2 semesters
     const [filters, setFilters] = useState({
         course: '',
@@ -27,7 +26,7 @@ const StudentReports = () => {
             try {
                 setLoading(true);
                 const token = localStorage.getItem('token');
-                
+                // Only fetch students who have feedback in the selected semester
                 const response = await axios.get('http://localhost:5000/api/students', {
                     params: { 
                         course: filters.course,
@@ -64,7 +63,7 @@ const StudentReports = () => {
 
     const viewStudentReport = (studentId) => {
         console.log('Opening report for studentId:', studentId); // Debugging log
-        window.open(`/student-report/${studentId}`, '_blank'); // Open the report in a new tab
+        window.open(`/student-report/${studentId}?semester=${filters.semester}`, '_blank'); // Pass semester in query params
     };
 
     const filteredStudents = students.filter(student => 
